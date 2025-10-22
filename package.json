@@ -8,6 +8,7 @@
     "prestart": "npx prisma migrate deploy && npx prisma generate",
     "start": "keystone start"
   },
+  
   "dependencies": {
     "@clerk/backend": "^2.17.0",
     "@clerk/clerk-sdk-node": "^4.13.23",
