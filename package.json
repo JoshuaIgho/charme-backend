@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "PORT=4000 keystone dev",
     "build": "keystone build",
-    "prestart": "npx prisma db push && npx prisma generate",
+    "prestart": "npx prisma migrate deploy && npx prisma generate",
     "start": "keystone start"
   },
   "dependencies": {
