@@ -14,12 +14,19 @@
     "@keystone-6/cloudinary": "^8.0.0",
     "@keystone-6/core": "^6.0.0",
     "@keystone-6/fields-document": "^9.0.0",
+    "@prisma/client": "^5.22.0",
     "axios": "^1.12.2",
     "cloudinary": "^2.7.0",
     "dotenv": "^17.2.3",
+    "keystone": "^4.2.1",
     "multer": "^2.0.2",
     "node-fetch": "^3.3.2",
+    "prisma": "^5.22.0",
     "stripe": "^19.1.0",
     "typescript": "^5.5.0"
+  },
+  "devDependencies": {
+    "@types/multer": "^2.0.0",
+    "@types/node": "^24.9.1"
   }
 }

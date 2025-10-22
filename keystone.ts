@@ -14,8 +14,8 @@ import fetch from 'node-fetch';
 import { paymentRoutes } from './routes/payment';
 
 // Load environment variables
-const B2_ACCESS_KEY_ID = process.env.B2_ACCESS_KEY_ID || '005883ec77f60010000000002';
-const B2_SECRET_ACCESS_KEY = process.env.B2_SECRET_ACCESS_KEY || 'K005LE95Ylp1yg9jkb8Ba/ZGVh4OaEA';
+const B2_ACCESS_KEY_ID = process.env.B2_ACCESS_KEY_ID ;
+const B2_SECRET_ACCESS_KEY = process.env.B2_SECRET_ACCESS_KEY ;
 
 // Validate credentials
 if (!B2_ACCESS_KEY_ID || !B2_SECRET_ACCESS_KEY) {
