@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "PORT=4000 keystone dev",
-    "start": "keystone start",
-    "build": "keystone build"
+    "build": "npx prisma generate && keystone build",
+    "start": "npx prisma generate && keystone start"
   },
   "dependencies": {
     "@clerk/backend": "^2.17.0",
