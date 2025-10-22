@@ -1,0 +1,25 @@
+{
+  "name": "keystone-app",
+  "version": "1.0.3",
+  "private": true,
+  "scripts": {
+    "dev": "PORT=4000 keystone dev",
+    "start": "keystone start",
+    "build": "keystone build"
+  },
+  "dependencies": {
+    "@clerk/backend": "^2.17.0",
+    "@clerk/clerk-sdk-node": "^4.13.23",
+    "@keystone-6/auth": "^8.0.0",
+    "@keystone-6/cloudinary": "^8.0.0",
+    "@keystone-6/core": "^6.0.0",
+    "@keystone-6/fields-document": "^9.0.0",
+    "axios": "^1.12.2",
+    "cloudinary": "^2.7.0",
+    "dotenv": "^17.2.3",
+    "multer": "^2.0.2",
+    "node-fetch": "^3.3.2",
+    "stripe": "^19.1.0",
+    "typescript": "^5.5.0"
+  }
+}
