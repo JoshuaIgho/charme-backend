@@ -18,6 +18,9 @@ export const lists: Lists = {
       addresses: relationship({ ref: 'Address.user', many: true }),
       createdAt: timestamp({ defaultValue: { kind: 'now' } }),
     },
+    db: {
+    idField: { kind: 'uuid' },
+  },
   }),
 
   Product: list({
