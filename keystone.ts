@@ -55,9 +55,11 @@ const upload = multer({
 export default withAuth(
   config({
     db: {
-      provider: 'sqlite',
-      url: 'file:./keystone.db',
-    },
+  provider: 'postgresql',
+  url: process.env.DATABASE_URL || 'file:./keystone.db',
+  enableLogging: true,
+  idField: { kind: 'uuid' },
+},
     lists,
     session,
     storage: {
