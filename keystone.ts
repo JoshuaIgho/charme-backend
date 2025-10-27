@@ -75,17 +75,16 @@ export default withAuth(
         signed: { expiry: 3600 },
       },
     },
-    server: {
-      port: 4000,
-      cors: {
-        origin: [
-          'http://localhost:3000',
-          'https://sshzbv7d-3000.uks1.devtunnels.ms',
-        ],
-        credentials: true,
-      },
+   server: {
+    cors: {
+      origin: [
+        'http://localhost:3000',
+        'https://charmesiri.vercel.app',
+        'https://*.vercel.app',
+      ],
+      credentials: true,
+    },
       extendExpressApp: (app, commonContext) => {
-        // ✅ Add JSON body parser middleware - CRITICAL for POST requests!
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
         
@@ -133,7 +132,7 @@ export default withAuth(
 
         // ✅ Upload product image endpoint - Using GraphQL multipart request
         app.post('/api/products/:productId/upload-image', upload.single('image'), async (req, res) => {
-          console.log('\n========================================');
+          console.log('========================================');
           console.log('🚀 BACKEND: Image upload request received');
           console.log('========================================');
           
@@ -277,4 +276,4 @@ export default withAuth(
       },
     },
   })
-);// Updated Thu Oct 23 18:58:34 BST 2025
+);
