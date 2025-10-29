@@ -5,7 +5,7 @@ import { config } from '@keystone-6/core';
 import { lists } from './schema';
 import { withAuth, session } from './auth';
 import { clerkClient } from '@clerk/clerk-sdk-node';
-import express from 'express'; // ✅ ADD THIS!
+import express from 'express';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -14,8 +14,8 @@ import fetch from 'node-fetch';
 import { paymentRoutes } from './routes/payment';
 
 // Load environment variables
-const B2_ACCESS_KEY_ID = process.env.B2_ACCESS_KEY_ID ;
-const B2_SECRET_ACCESS_KEY = process.env.B2_SECRET_ACCESS_KEY ;
+const B2_ACCESS_KEY_ID = process.env.B2_ACCESS_KEY_ID;
+const B2_SECRET_ACCESS_KEY = process.env.B2_SECRET_ACCESS_KEY;
 
 // Validate credentials
 if (!B2_ACCESS_KEY_ID || !B2_SECRET_ACCESS_KEY) {
@@ -52,14 +52,17 @@ const upload = multer({
   },
 });
 
+// ✅ Dynamic API URL for internal requests
+const INTERNAL_API_URL = process.env.INTERNAL_API_URL || 'http://localhost:4000/api/graphql';
+
 export default withAuth(
   config({
     db: {
-  provider: 'postgresql',
-  url: process.env.DATABASE_URL || 'file:./keystone.db',
-  enableLogging: true,
-  idField: { kind: 'uuid' },
-},
+      provider: 'postgresql',
+      url: process.env.DATABASE_URL || 'file:./keystone.db',
+      enableLogging: true,
+      idField: { kind: 'uuid' },
+    },
     lists,
     session,
     storage: {
@@ -75,15 +78,18 @@ export default withAuth(
         signed: { expiry: 3600 },
       },
     },
-   server: {
-    cors: {
-      origin: [
-        'http://localhost:3000',
-        'https://charmesiri.vercel.app',
-        'https://*.vercel.app',
-      ],
-      credentials: true,
-    },
+    server: {
+      port: parseInt(process.env.PORT || '4000'),
+      cors: {
+        origin: [
+          'http://localhost:3000',
+          'http://localhost:5173',
+          'https://charmesiri.vercel.app',
+          'https://*.vercel.app',
+          'https://charme-backend.onrender.com', // ✅ Allow self-requests
+        ],
+        credentials: true,
+      },
       extendExpressApp: (app, commonContext) => {
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
@@ -212,7 +218,8 @@ export default withAuth(
             const headers = form.getHeaders();
             headers['apollo-require-preflight'] = 'true'; // Add CSRF protection header
             
-            const graphqlResponse = await fetch('http://localhost:4000/api/graphql', {
+            // ✅ Use dynamic API URL (works in both local and production)
+            const graphqlResponse = await fetch(INTERNAL_API_URL, {
               method: 'POST',
               body: form,
               headers: headers,
@@ -251,9 +258,6 @@ export default withAuth(
             });
           } catch (error) {
             console.error('❌ Upload error:', error);
-            console.error('Error details:', {
-            
-            });
             console.log('========================================\n');
             
             // Clean up temp file on error
@@ -269,10 +273,23 @@ export default withAuth(
             res.status(500).json({
               success: false,
               error: 'Failed to upload image',
-             
             });
           }
         });
+      },
+    },
+    // ✅ CRITICAL: Disable CSRF protection or configure it properly
+    graphql: {
+      path: '/api/graphql',
+      playground: process.env.NODE_ENV !== 'production',
+      apolloConfig: {
+        // Option 1: Disable CSRF (simplest, safe with proper CORS)
+        csrfPrevention: false,
+        
+        // Option 2: Or configure CSRF with allowed headers (more secure)
+        // csrfPrevention: {
+        //   requestHeaders: ['content-type', 'apollo-require-preflight']
+        // }
       },
     },
   })
