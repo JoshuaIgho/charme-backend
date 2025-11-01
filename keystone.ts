@@ -1,6 +1,5 @@
-// keystone.ts
-import 'dotenv/config'; // ✅ Load environment variables FIRST!
-
+// keystone.ts - FIXED VERSION
+import 'dotenv/config';
 import { config } from '@keystone-6/core';
 import { lists } from './schema';
 import { withAuth, session } from './auth';
@@ -17,21 +16,18 @@ import { paymentRoutes } from './routes/payment';
 const B2_ACCESS_KEY_ID = process.env.B2_ACCESS_KEY_ID;
 const B2_SECRET_ACCESS_KEY = process.env.B2_SECRET_ACCESS_KEY;
 
-// Validate credentials
 if (!B2_ACCESS_KEY_ID || !B2_SECRET_ACCESS_KEY) {
   throw new Error('Missing B2 credentials in .env file');
 }
 
-// Configure multer to save files temporarily
+// Configure multer
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
+  destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
     const uniqueName = `${Date.now()}-${require('crypto').randomBytes(8).toString('hex')}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
@@ -40,9 +36,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
@@ -52,7 +46,6 @@ const upload = multer({
   },
 });
 
-// ✅ Dynamic API URL for internal requests
 const INTERNAL_API_URL = process.env.INTERNAL_API_URL || 'http://localhost:4000/api/graphql';
 
 export default withAuth(
@@ -86,18 +79,25 @@ export default withAuth(
           'http://localhost:5173',
           'https://charmesiri.vercel.app',
           'https://*.vercel.app',
-          'https://charme-backend.onrender.com', // ✅ Allow self-requests
+          'https://charme-backend.onrender.com',
         ],
         credentials: true,
       },
       extendExpressApp: (app, commonContext) => {
+        console.log('🚀 Registering custom Express routes...');
+        
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
         
-        // ✅ REGISTER PAYMENT ROUTES
+        // ✅ Register payment routes
         paymentRoutes(app);
         
-        // ✅ Sync Clerk user with Keystone
+        // ✅ TEST ROUTE - Remove this after testing
+        app.get('/api/test', (req, res) => {
+          res.json({ message: 'Express routes are working!' });
+        });
+        
+        // ✅ Sync user route
         app.post('/api/sync-user', async (req, res) => {
           try {
             const authHeader = req.headers.authorization;
@@ -124,9 +124,7 @@ export default withAuth(
                 },
                 query: 'id',
               });
-              console.log('✅ Synced new user to Keystone:', clerkUser.emailAddresses[0].emailAddress);
-            } else {
-              console.log('ℹ️ User already exists in Keystone');
+              console.log('✅ Synced new user to Keystone');
             }
 
             res.json({ success: true });
@@ -136,160 +134,177 @@ export default withAuth(
           }
         });
 
-        // ✅ Upload product image endpoint - Using GraphQL multipart request
-        app.post('/api/products/:productId/upload-image', upload.single('image'), async (req, res) => {
-          console.log('========================================');
-          console.log('🚀 BACKEND: Image upload request received');
-          console.log('========================================');
-          
-          let tempFilePath = null;
-          
-          try {
-            const { productId } = req.params;
-            const file = req.file;
-
-            console.log('📋 Product ID:', productId);
-            console.log('📁 File received:', file ? {
-              fieldname: file.fieldname,
-              originalname: file.originalname,
-              mimetype: file.mimetype,
-              size: file.size,
-              path: file.path
-            } : 'No file');
-
-            if (!file) {
-              console.error('❌ No file uploaded');
-              return res.status(400).json({ 
-                success: false,
-                error: 'No image file provided' 
-              });
-            }
-
-            if (!productId) {
-              console.error('❌ No product ID provided');
-              return res.status(400).json({ 
-                success: false,
-                error: 'Product ID is required' 
-              });
-            }
-
-            tempFilePath = file.path;
-
-            console.log('💾 Uploading image through Keystone GraphQL API...');
-
-            // Create a multipart form for GraphQL upload
-            const form = new FormData();
-            
-            // Add the GraphQL operations
-            const operations = {
-              query: `
-                mutation UpdateProductImage($id: ID!, $image: Upload!) {
-                  updateProduct(where: { id: $id }, data: { image: { upload: $image } }) {
-                    id
-                    name
-                    image {
-                      id
-                      url
-                    }
-                  }
-                }
-              `,
-              variables: {
-                id: productId,
-                image: null
-              }
-            };
-            
-            form.append('operations', JSON.stringify(operations));
-            
-            // Add the map to tell GraphQL where the file is
-            const map = {
-              '0': ['variables.image']
-            };
-            form.append('map', JSON.stringify(map));
-            
-            // Add the actual file
-            form.append('0', fs.createReadStream(file.path), {
-              filename: file.originalname,
-              contentType: file.mimetype,
-            });
-
-            // Send the multipart request to Keystone's GraphQL endpoint
-            const headers = form.getHeaders();
-            headers['apollo-require-preflight'] = 'true'; // Add CSRF protection header
-            
-            // ✅ Use dynamic API URL (works in both local and production)
-            const graphqlResponse = await fetch(INTERNAL_API_URL, {
-              method: 'POST',
-              body: form,
-              headers: headers,
-            });
-
-            const result = await graphqlResponse.json();
-            
-            if (result.errors) {
-              console.error('GraphQL errors:', result.errors);
-              throw new Error(result.errors[0].message);
-            }
-
-            const updatedProduct = result.data?.updateProduct;
-            
-            if (!updatedProduct) {
-              throw new Error('Failed to update product');
-            }
-
-            console.log('✅ Product updated successfully');
-            console.log('📷 Image URL:', updatedProduct.image?.url);
-            console.log('========================================\n');
-
-            // Clean up temp file
-            if (tempFilePath && fs.existsSync(tempFilePath)) {
-              fs.unlinkSync(tempFilePath);
-              console.log('🧹 Cleaned up temporary file');
-            }
-
-            res.json({
-              success: true,
-              message: 'Image uploaded successfully',
-              data: {
-                productId: updatedProduct.id,
-                imageUrl: updatedProduct.image?.url,
-              },
-            });
-          } catch (error) {
-            console.error('❌ Upload error:', error);
-            console.log('========================================\n');
-            
-            // Clean up temp file on error
-            if (tempFilePath && fs.existsSync(tempFilePath)) {
-              try {
-                fs.unlinkSync(tempFilePath);
-                console.log('🧹 Cleaned up temporary file after error');
-              } catch (cleanupError) {
-                console.error('Failed to clean up temp file:', cleanupError);
-              }
-            }
-            
-            res.status(500).json({
-              success: false,
-              error: 'Failed to upload image',
-            });
+       // ✅ FIXED: Get featured products
+app.get('/api/products/featured', async (req, res) => {
+  console.log('🔍 GET /api/products/featured - Request received');
+  
+  try {
+    const context = await commonContext.withRequest(req, res);
+    const limit = parseInt(req.query.limit as string) || 8;
+    
+    console.log(`Fetching ${limit} featured products...`);
+    
+    const products = await context.query.Product.findMany({
+      where: { 
+        isFeatured: { equals: true },
+        isActive: { equals: true }
+      },
+      take: limit,
+      query: `
+        id
+        name
+        price
+        originalPrice
+        description
+        isNewStock
+        isOnSale
+        primaryImage {
+          id
+          url
+        }
+        images {
+          id
+          image {
+            id
+            url
           }
-        });
+        }
+      `
+    });
+    
+    console.log(`✅ Found ${products.length} featured products`);
+    
+    res.json({
+      success: true,
+      data: { products }
+    });
+  } catch (error) {
+    console.error('❌ Featured products error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch featured products'
+    });
+  }
+});
+
+// ✅ FIXED: Get new arrivals
+app.get('/api/products/new-arrivals', async (req, res) => {
+  console.log('🆕 GET /api/products/new-arrivals - Request received');
+  
+  try {
+    const context = await commonContext.withRequest(req, res);
+    const limit = parseInt(req.query.limit as string) || 8;
+    
+    console.log(`Fetching ${limit} new arrivals...`);
+    
+    const products = await context.query.Product.findMany({
+      where: { 
+        isNewStock: { equals: true },
+        isActive: { equals: true }
+      },
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      query: `
+        id
+        name
+        price
+        originalPrice
+        description
+        isNewStock
+        isOnSale
+        primaryImage {
+          id
+          url
+        }
+        images {
+          id
+          image {
+            id
+            url
+          }
+        }
+      `
+    });
+    
+    console.log(`✅ Found ${products.length} new arrivals`);
+    
+    res.json({
+      success: true,
+      data: { products }
+    });
+  } catch (error) {
+    console.error('❌ New arrivals error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch new arrivals'
+    });
+  }
+});
+
+// ✅ FIXED: Get all products
+app.get('/api/products', async (req, res) => {
+  console.log('📦 GET /api/products - Request received');
+  
+  try {
+    const context = await commonContext.withRequest(req, res);
+    const limit = parseInt(req.query.limit as string) || 20;
+    const category = req.query.category as string;
+    const isNew = req.query.new === 'true';
+    
+    const where: any = { isActive: { equals: true } };
+    if (category) where.categoryType = { equals: category };
+    if (isNew) where.isNewStock = { equals: true };
+    
+    const products = await context.query.Product.findMany({
+      where,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      query: `
+        id
+        name
+        price
+        originalPrice
+        description
+        categoryType
+        isNewStock
+        isOnSale
+        primaryImage {
+          id
+          url
+        }
+        images {
+          id
+          image {
+            id
+            url
+          }
+        }
+      `
+    });
+    
+    console.log(`✅ Found ${products.length} products`);
+    
+    res.json({
+      success: true,
+      data: { products }
+    });
+  } catch (error) {
+    console.error('❌ Products fetch error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch products'
+    });
+  }
+});
+        
+        console.log('✅ Custom Express routes registered successfully');
       },
     },
-    // ✅ CRITICAL: Disable CSRF protection or configure it properly
     graphql: {
       path: '/api/graphql',
       playground: process.env.NODE_ENV !== 'production',
       apolloConfig: {
-        // Option 1: Disable CSRF (simplest, safe with proper CORS)
         csrfPrevention: false,
-        
-        // Option 2: Or configure CSRF with allowed headers (more secure)
-        // csrfPrevention: {
-        //   requestHeaders: ['content-type', 'apollo-require-preflight']
-        // }
       },
     },
   })

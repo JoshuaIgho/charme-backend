@@ -12,35 +12,83 @@ generator client {
 }
 
 model User {
-  id            String         @id @default(uuid()) @postgresql.Uuid
-  clerkId       String         @unique @default("")
-  name          String         @default("")
-  email         String         @unique @default("")
-  password      String?
-  isAdmin       Boolean        @default(false)
-  orders        Order[]        @relation("Order_user")
-  wishlistItems WishlistItem[] @relation("WishlistItem_user")
-  addresses     Address[]      @relation("Address_user")
-  createdAt     DateTime?      @default(now())
+  id               String         @id @default(uuid()) @postgresql.Uuid
+  clerkId          String         @unique @default("")
+  name             String         @default("")
+  email            String         @unique @default("")
+  password         String?
+  isAdmin          Boolean        @default(false)
+  orders           Order[]        @relation("Order_user")
+  wishlistItems    WishlistItem[] @relation("WishlistItem_user")
+  addresses        Address[]      @relation("Address_user")
+  createdAt        DateTime?      @default(now())
+  from_Review_user Review[]       @relation("Review_user")
 }
 
 model Product {
-  id              String         @id @default(uuid()) @postgresql.Uuid
-  name            String         @default("")
-  description     String         @default("")
-  price           Int
-  stock           Int?           @default(0)
+  id                     String         @id @default(uuid()) @postgresql.Uuid
+  name                   String         @default("")
+  description            String         @default("")
+  price                  Int
+  originalPrice          Int?
+  stock                  Int?           @default(0)
+  image_id               String?
+  image_filesize         Int?
+  image_width            Int?
+  image_height           Int?
+  image_extension        String?
+  primaryImage_id        String?
+  primaryImage_filesize  Int?
+  primaryImage_width     Int?
+  primaryImage_height    Int?
+  primaryImage_extension String?
+  images                 ProductImage[] @relation("ProductImage_product")
+  category               Category?      @relation("Product_category", fields: [categoryId], references: [id])
+  categoryId             String?        @map("category") @postgresql.Uuid
+  categoryType           String?
+  isActive               Boolean        @default(true)
+  isFeatured             Boolean        @default(false)
+  isNewStock             Boolean        @default(false)
+  isOnSale               Boolean        @default(false)
+  averageRating          Decimal?       @default("0") @postgresql.Decimal(3, 2)
+  totalReviews           Int?           @default(0)
+  orderItems             OrderItem[]    @relation("OrderItem_product")
+  wishlistItems          WishlistItem[] @relation("WishlistItem_product")
+  reviews                Review[]       @relation("Review_product")
+  createdAt              DateTime?      @default(now())
+  updatedAt              DateTime?      @updatedAt
+
+  @@index([categoryId])
+}
+
+model ProductImage {
+  id              String    @id @default(uuid()) @postgresql.Uuid
   image_id        String?
   image_filesize  Int?
   image_width     Int?
   image_height    Int?
   image_extension String?
-  category        Category?      @relation("Product_category", fields: [categoryId], references: [id])
-  categoryId      String?        @map("category") @postgresql.Uuid
-  orderItems      OrderItem[]    @relation("OrderItem_product")
-  wishlistItems   WishlistItem[] @relation("WishlistItem_product")
+  altText         String    @default("")
+  product         Product?  @relation("ProductImage_product", fields: [productId], references: [id])
+  productId       String?   @map("product") @postgresql.Uuid
+  createdAt       DateTime? @default(now())
 
-  @@index([categoryId])
+  @@index([productId])
+}
+
+model Review {
+  id                 String    @id @default(uuid()) @postgresql.Uuid
+  product            Product?  @relation("Review_product", fields: [productId], references: [id])
+  productId          String?   @map("product") @postgresql.Uuid
+  user               User?     @relation("Review_user", fields: [userId], references: [id])
+  userId             String?   @map("user") @postgresql.Uuid
+  rating             Int
+  comment            String    @default("")
+  isVerifiedPurchase Boolean   @default(false)
+  createdAt          DateTime? @default(now())
+
+  @@index([productId])
+  @@index([userId])
 }
 
 model Category {

@@ -212,13 +212,28 @@ type Product {
   name: String
   description: String
   price: Int
+  originalPrice: Int
   stock: Int
   image: ImageFieldOutput
+  primaryImage: ImageFieldOutput
+  images(where: ProductImageWhereInput! = {}, orderBy: [ProductImageOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ProductImageWhereUniqueInput): [ProductImage!]
+  imagesCount(where: ProductImageWhereInput! = {}): Int
   category: Category
+  categoryType: String
+  isActive: Boolean
+  isFeatured: Boolean
+  isNewStock: Boolean
+  isOnSale: Boolean
+  averageRating: Decimal
+  totalReviews: Int
   orderItems(where: OrderItemWhereInput! = {}, orderBy: [OrderItemOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: OrderItemWhereUniqueInput): [OrderItem!]
   orderItemsCount(where: OrderItemWhereInput! = {}): Int
   wishlistItems(where: WishlistItemWhereInput! = {}, orderBy: [WishlistItemOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: WishlistItemWhereUniqueInput): [WishlistItem!]
   wishlistItemsCount(where: WishlistItemWhereInput! = {}): Int
+  reviews(where: ReviewWhereInput! = {}, orderBy: [ReviewOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReviewWhereUniqueInput): [Review!]
+  reviewsCount(where: ReviewWhereInput! = {}): Int
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 type ImageFieldOutput {
@@ -237,6 +252,8 @@ enum ImageExtension {
   gif
 }
 
+scalar Decimal
+
 input ProductWhereUniqueInput {
   id: ID
 }
@@ -249,10 +266,22 @@ input ProductWhereInput {
   name: StringFilter
   description: StringFilter
   price: IntFilter
+  originalPrice: IntNullableFilter
   stock: IntNullableFilter
+  images: ProductImageManyRelationFilter
   category: CategoryWhereInput
+  categoryType: StringNullableFilter
+  isActive: BooleanFilter
+  isFeatured: BooleanFilter
+  isNewStock: BooleanFilter
+  isOnSale: BooleanFilter
+  averageRating: DecimalNullableFilter
+  totalReviews: IntNullableFilter
   orderItems: OrderItemManyRelationFilter
   wishlistItems: WishlistItemManyRelationFilter
+  reviews: ReviewManyRelationFilter
+  createdAt: DateTimeNullableFilter
+  updatedAt: DateTimeNullableFilter
 }
 
 input IntFilter {
@@ -277,10 +306,48 @@ input IntNullableFilter {
   not: IntNullableFilter
 }
 
+input ProductImageManyRelationFilter {
+  every: ProductImageWhereInput
+  some: ProductImageWhereInput
+  none: ProductImageWhereInput
+}
+
+input StringNullableFilter {
+  equals: String
+  in: [String!]
+  notIn: [String!]
+  lt: String
+  lte: String
+  gt: String
+  gte: String
+  contains: String
+  startsWith: String
+  endsWith: String
+  mode: QueryMode
+  not: StringNullableFilter
+}
+
+input DecimalNullableFilter {
+  equals: Decimal
+  in: [Decimal!]
+  notIn: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  gt: Decimal
+  gte: Decimal
+  not: DecimalNullableFilter
+}
+
 input OrderItemManyRelationFilter {
   every: OrderItemWhereInput
   some: OrderItemWhereInput
   none: OrderItemWhereInput
+}
+
+input ReviewManyRelationFilter {
+  every: ReviewWhereInput
+  some: ReviewWhereInput
+  none: ReviewWhereInput
 }
 
 input ProductOrderByInput {
@@ -288,18 +355,41 @@ input ProductOrderByInput {
   name: OrderDirection
   description: OrderDirection
   price: OrderDirection
+  originalPrice: OrderDirection
   stock: OrderDirection
+  categoryType: OrderDirection
+  isActive: OrderDirection
+  isFeatured: OrderDirection
+  isNewStock: OrderDirection
+  isOnSale: OrderDirection
+  averageRating: OrderDirection
+  totalReviews: OrderDirection
+  createdAt: OrderDirection
+  updatedAt: OrderDirection
 }
 
 input ProductUpdateInput {
   name: String
   description: String
   price: Int
+  originalPrice: Int
   stock: Int
   image: ImageFieldInput
+  primaryImage: ImageFieldInput
+  images: ProductImageRelateToManyForUpdateInput
   category: CategoryRelateToOneForUpdateInput
+  categoryType: String
+  isActive: Boolean
+  isFeatured: Boolean
+  isNewStock: Boolean
+  isOnSale: Boolean
+  averageRating: Decimal
+  totalReviews: Int
   orderItems: OrderItemRelateToManyForUpdateInput
   wishlistItems: WishlistItemRelateToManyForUpdateInput
+  reviews: ReviewRelateToManyForUpdateInput
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 input ImageFieldInput {
@@ -308,6 +398,13 @@ input ImageFieldInput {
 
 """The `Upload` scalar type represents a file upload."""
 scalar Upload
+
+input ProductImageRelateToManyForUpdateInput {
+  disconnect: [ProductImageWhereUniqueInput!]
+  set: [ProductImageWhereUniqueInput!]
+  create: [ProductImageCreateInput!]
+  connect: [ProductImageWhereUniqueInput!]
+}
 
 input CategoryRelateToOneForUpdateInput {
   create: CategoryCreateInput
@@ -322,6 +419,13 @@ input OrderItemRelateToManyForUpdateInput {
   connect: [OrderItemWhereUniqueInput!]
 }
 
+input ReviewRelateToManyForUpdateInput {
+  disconnect: [ReviewWhereUniqueInput!]
+  set: [ReviewWhereUniqueInput!]
+  create: [ReviewCreateInput!]
+  connect: [ReviewWhereUniqueInput!]
+}
+
 input ProductUpdateArgs {
   where: ProductWhereUniqueInput!
   data: ProductUpdateInput!
@@ -331,11 +435,29 @@ input ProductCreateInput {
   name: String
   description: String
   price: Int
+  originalPrice: Int
   stock: Int
   image: ImageFieldInput
+  primaryImage: ImageFieldInput
+  images: ProductImageRelateToManyForCreateInput
   category: CategoryRelateToOneForCreateInput
+  categoryType: String
+  isActive: Boolean
+  isFeatured: Boolean
+  isNewStock: Boolean
+  isOnSale: Boolean
+  averageRating: Decimal
+  totalReviews: Int
   orderItems: OrderItemRelateToManyForCreateInput
   wishlistItems: WishlistItemRelateToManyForCreateInput
+  reviews: ReviewRelateToManyForCreateInput
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ProductImageRelateToManyForCreateInput {
+  create: [ProductImageCreateInput!]
+  connect: [ProductImageWhereUniqueInput!]
 }
 
 input CategoryRelateToOneForCreateInput {
@@ -346,6 +468,138 @@ input CategoryRelateToOneForCreateInput {
 input OrderItemRelateToManyForCreateInput {
   create: [OrderItemCreateInput!]
   connect: [OrderItemWhereUniqueInput!]
+}
+
+input ReviewRelateToManyForCreateInput {
+  create: [ReviewCreateInput!]
+  connect: [ReviewWhereUniqueInput!]
+}
+
+type ProductImage {
+  id: ID!
+  image: ImageFieldOutput
+  altText: String
+  product: Product
+  createdAt: DateTime
+}
+
+input ProductImageWhereUniqueInput {
+  id: ID
+}
+
+input ProductImageWhereInput {
+  AND: [ProductImageWhereInput!]
+  OR: [ProductImageWhereInput!]
+  NOT: [ProductImageWhereInput!]
+  id: IDFilter
+  altText: StringFilter
+  product: ProductWhereInput
+  createdAt: DateTimeNullableFilter
+}
+
+input ProductImageOrderByInput {
+  id: OrderDirection
+  altText: OrderDirection
+  createdAt: OrderDirection
+}
+
+input ProductImageUpdateInput {
+  image: ImageFieldInput
+  altText: String
+  product: ProductRelateToOneForUpdateInput
+  createdAt: DateTime
+}
+
+input ProductRelateToOneForUpdateInput {
+  create: ProductCreateInput
+  connect: ProductWhereUniqueInput
+  disconnect: Boolean
+}
+
+input ProductImageUpdateArgs {
+  where: ProductImageWhereUniqueInput!
+  data: ProductImageUpdateInput!
+}
+
+input ProductImageCreateInput {
+  image: ImageFieldInput
+  altText: String
+  product: ProductRelateToOneForCreateInput
+  createdAt: DateTime
+}
+
+input ProductRelateToOneForCreateInput {
+  create: ProductCreateInput
+  connect: ProductWhereUniqueInput
+}
+
+type Review {
+  id: ID!
+  product: Product
+  user: User
+  rating: Int
+  comment: String
+  isVerifiedPurchase: Boolean
+  createdAt: DateTime
+}
+
+input ReviewWhereUniqueInput {
+  id: ID
+}
+
+input ReviewWhereInput {
+  AND: [ReviewWhereInput!]
+  OR: [ReviewWhereInput!]
+  NOT: [ReviewWhereInput!]
+  id: IDFilter
+  product: ProductWhereInput
+  user: UserWhereInput
+  rating: IntFilter
+  comment: StringFilter
+  isVerifiedPurchase: BooleanFilter
+  createdAt: DateTimeNullableFilter
+}
+
+input ReviewOrderByInput {
+  id: OrderDirection
+  rating: OrderDirection
+  comment: OrderDirection
+  isVerifiedPurchase: OrderDirection
+  createdAt: OrderDirection
+}
+
+input ReviewUpdateInput {
+  product: ProductRelateToOneForUpdateInput
+  user: UserRelateToOneForUpdateInput
+  rating: Int
+  comment: String
+  isVerifiedPurchase: Boolean
+  createdAt: DateTime
+}
+
+input UserRelateToOneForUpdateInput {
+  create: UserCreateInput
+  connect: UserWhereUniqueInput
+  disconnect: Boolean
+}
+
+input ReviewUpdateArgs {
+  where: ReviewWhereUniqueInput!
+  data: ReviewUpdateInput!
+}
+
+input ReviewCreateInput {
+  product: ProductRelateToOneForCreateInput
+  user: UserRelateToOneForCreateInput
+  rating: Int
+  comment: String
+  isVerifiedPurchase: Boolean
+  createdAt: DateTime
+}
+
+input UserRelateToOneForCreateInput {
+  create: UserCreateInput
+  connect: UserWhereUniqueInput
 }
 
 type Category {
@@ -468,12 +722,6 @@ input OrderUpdateInput {
   createdAt: DateTime
 }
 
-input UserRelateToOneForUpdateInput {
-  create: UserCreateInput
-  connect: UserWhereUniqueInput
-  disconnect: Boolean
-}
-
 input ShippingAddressRelateToOneForUpdateInput {
   create: ShippingAddressCreateInput
   connect: ShippingAddressWhereUniqueInput
@@ -496,11 +744,6 @@ input OrderCreateInput {
   items: OrderItemRelateToManyForCreateInput
   shippingAddress: ShippingAddressRelateToOneForCreateInput
   createdAt: DateTime
-}
-
-input UserRelateToOneForCreateInput {
-  create: UserCreateInput
-  connect: UserWhereUniqueInput
 }
 
 input ShippingAddressRelateToOneForCreateInput {
@@ -550,12 +793,6 @@ input OrderRelateToOneForUpdateInput {
   disconnect: Boolean
 }
 
-input ProductRelateToOneForUpdateInput {
-  create: ProductCreateInput
-  connect: ProductWhereUniqueInput
-  disconnect: Boolean
-}
-
 input OrderItemUpdateArgs {
   where: OrderItemWhereUniqueInput!
   data: OrderItemUpdateInput!
@@ -571,11 +808,6 @@ input OrderItemCreateInput {
 input OrderRelateToOneForCreateInput {
   create: OrderCreateInput
   connect: OrderWhereUniqueInput
-}
-
-input ProductRelateToOneForCreateInput {
-  create: ProductCreateInput
-  connect: ProductWhereUniqueInput
 }
 
 type ShippingAddress {
@@ -788,6 +1020,18 @@ type Mutation {
   updateProducts(data: [ProductUpdateArgs!]!): [Product]
   deleteProduct(where: ProductWhereUniqueInput!): Product
   deleteProducts(where: [ProductWhereUniqueInput!]!): [Product]
+  createProductImage(data: ProductImageCreateInput!): ProductImage
+  createProductImages(data: [ProductImageCreateInput!]!): [ProductImage]
+  updateProductImage(where: ProductImageWhereUniqueInput!, data: ProductImageUpdateInput!): ProductImage
+  updateProductImages(data: [ProductImageUpdateArgs!]!): [ProductImage]
+  deleteProductImage(where: ProductImageWhereUniqueInput!): ProductImage
+  deleteProductImages(where: [ProductImageWhereUniqueInput!]!): [ProductImage]
+  createReview(data: ReviewCreateInput!): Review
+  createReviews(data: [ReviewCreateInput!]!): [Review]
+  updateReview(where: ReviewWhereUniqueInput!, data: ReviewUpdateInput!): Review
+  updateReviews(data: [ReviewUpdateArgs!]!): [Review]
+  deleteReview(where: ReviewWhereUniqueInput!): Review
+  deleteReviews(where: [ReviewWhereUniqueInput!]!): [Review]
   createCategory(data: CategoryCreateInput!): Category
   createCategories(data: [CategoryCreateInput!]!): [Category]
   updateCategory(where: CategoryWhereUniqueInput!, data: CategoryUpdateInput!): Category
@@ -853,6 +1097,12 @@ type Query {
   product(where: ProductWhereUniqueInput!): Product
   products(where: ProductWhereInput! = {}, orderBy: [ProductOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ProductWhereUniqueInput): [Product!]
   productsCount(where: ProductWhereInput! = {}): Int
+  productImage(where: ProductImageWhereUniqueInput!): ProductImage
+  productImages(where: ProductImageWhereInput! = {}, orderBy: [ProductImageOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ProductImageWhereUniqueInput): [ProductImage!]
+  productImagesCount(where: ProductImageWhereInput! = {}): Int
+  review(where: ReviewWhereUniqueInput!): Review
+  reviews(where: ReviewWhereInput! = {}, orderBy: [ReviewOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ReviewWhereUniqueInput): [Review!]
+  reviewsCount(where: ReviewWhereInput! = {}): Int
   category(where: CategoryWhereUniqueInput!): Category
   categories(where: CategoryWhereInput! = {}, orderBy: [CategoryOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: CategoryWhereUniqueInput): [Category!]
   categoriesCount(where: CategoryWhereInput! = {}): Int
