@@ -1,10 +1,11 @@
-// keystone.ts - COMPLETE FIXED VERSION
-import 'dotenv/config';
+// keystone.ts
+import 'dotenv/config'; // ✅ Load environment variables FIRST!
+
 import { config } from '@keystone-6/core';
 import { lists } from './schema';
 import { withAuth, session } from './auth';
 import { clerkClient } from '@clerk/clerk-sdk-node';
-import express from 'express';
+import express from 'express'; // ✅ ADD THIS!
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -13,21 +14,24 @@ import fetch from 'node-fetch';
 import { paymentRoutes } from './routes/payment';
 
 // Load environment variables
-const B2_ACCESS_KEY_ID = process.env.B2_ACCESS_KEY_ID;
-const B2_SECRET_ACCESS_KEY = process.env.B2_SECRET_ACCESS_KEY;
+const B2_ACCESS_KEY_ID = process.env.B2_ACCESS_KEY_ID ;
+const B2_SECRET_ACCESS_KEY = process.env.B2_SECRET_ACCESS_KEY ;
 
+// Validate credentials
 if (!B2_ACCESS_KEY_ID || !B2_SECRET_ACCESS_KEY) {
   throw new Error('Missing B2 credentials in .env file');
 }
 
-// Configure multer
+// Configure multer to save files temporarily
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
   filename: (req, file, cb) => {
     const uniqueName = `${Date.now()}-${require('crypto').randomBytes(8).toString('hex')}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
@@ -36,7 +40,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
@@ -49,11 +55,11 @@ const upload = multer({
 export default withAuth(
   config({
     db: {
-      provider: 'postgresql',
-      url: process.env.DATABASE_URL || 'file:./keystone.db',
-      enableLogging: true,
-      idField: { kind: 'uuid' },
-    },
+  provider: 'postgresql',
+  url: process.env.DATABASE_URL || 'file:./keystone.db',
+  enableLogging: true,
+  idField: { kind: 'uuid' },
+},
     lists,
     session,
     storage: {
@@ -69,33 +75,25 @@ export default withAuth(
         signed: { expiry: 3600 },
       },
     },
-    server: {
-      port: parseInt(process.env.PORT || '4000'),
-      cors: {
-        origin: [
-          'http://localhost:3000',
-          'http://localhost:5173',
-          'https://charmesiri.vercel.app',
-          'https://*.vercel.app',
-          'https://charme-backend.onrender.com',
-        ],
-        credentials: true,
-      },
+   server: {
+     port: 4000,
+    cors: {
+      origin: [
+        'http://localhost:3000',
+        'https://charmesiri.vercel.app',
+        'https://*.vercel.app',
+      ],
+      credentials: true,
+    },
+
       extendExpressApp: (app, commonContext) => {
-        console.log('🚀 Registering custom Express routes...');
-        
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
         
-        // ✅ Register payment routes
+        // ✅ REGISTER PAYMENT ROUTES
         paymentRoutes(app);
         
-        // ✅ TEST ROUTE
-        app.get('/api/test', (req, res) => {
-          res.json({ message: 'Express routes are working!' });
-        });
-        
-        // ✅ Sync user route
+        // ✅ Sync Clerk user with Keystone
         app.post('/api/sync-user', async (req, res) => {
           try {
             const authHeader = req.headers.authorization;
@@ -122,7 +120,9 @@ export default withAuth(
                 },
                 query: 'id',
               });
-              console.log('✅ Synced new user to Keystone');
+              console.log('✅ Synced new user to Keystone:', clerkUser.emailAddresses[0].emailAddress);
+            } else {
+              console.log('ℹ️ User already exists in Keystone');
             }
 
             res.json({ success: true });
@@ -132,7 +132,169 @@ export default withAuth(
           }
         });
 
-        // ✅ Upload product image endpoint
+        app.get('/api/products/featured', async (req, res) => {
+  console.log('🔍 GET /api/products/featured - Request received');
+  
+  try {
+    const context = await commonContext.withRequest(req, res);
+    const limit = parseInt(req.query.limit as string) || 8;
+    
+    console.log(`Fetching ${limit} featured products...`);
+    
+    const products = await context.query.Product.findMany({
+      where: { 
+        isFeatured: { equals: true },
+        isActive: { equals: true }
+      },
+      take: limit,
+      query: `
+        id
+        name
+        price
+        originalPrice
+        description
+        isNewStock
+        isOnSale
+        primaryImage {
+          id
+          url
+        }
+        images {
+          id
+          image {
+            id
+            url
+          }
+        }
+      `
+    });
+    
+    console.log(`✅ Found ${products.length} featured products`);
+    
+    res.json({
+      success: true,
+      data: { products }
+    });
+  } catch (error) {
+    console.error('❌ Featured products error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch featured products'
+    });
+  }
+});
+
+// ✅ FIXED: Get new arrivals
+app.get('/api/products/new-arrivals', async (req, res) => {
+  console.log('🆕 GET /api/products/new-arrivals - Request received');
+  
+  try {
+    const context = await commonContext.withRequest(req, res);
+    const limit = parseInt(req.query.limit as string) || 8;
+    
+    console.log(`Fetching ${limit} new arrivals...`);
+    
+    const products = await context.query.Product.findMany({
+      where: { 
+        isNewStock: { equals: true },
+        isActive: { equals: true }
+      },
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      query: `
+        id
+        name
+        price
+        originalPrice
+        description
+        isNewStock
+        isOnSale
+        primaryImage {
+          id
+          url
+        }
+        images {
+          id
+          image {
+            id
+            url
+          }
+        }
+      `
+    });
+    
+    console.log(`✅ Found ${products.length} new arrivals`);
+    
+    res.json({
+      success: true,
+      data: { products }
+    });
+  } catch (error) {
+    console.error('❌ New arrivals error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch new arrivals'
+    });
+  }
+});
+
+// ✅ FIXED: Get all products
+app.get('/api/products', async (req, res) => {
+  console.log('📦 GET /api/products - Request received');
+  
+  try {
+    const context = await commonContext.withRequest(req, res);
+    const limit = parseInt(req.query.limit as string) || 20;
+    const category = req.query.category as string;
+    const isNew = req.query.new === 'true';
+    
+    const where: any = { isActive: { equals: true } };
+    if (category) where.categoryType = { equals: category };
+    if (isNew) where.isNewStock = { equals: true };
+    
+    const products = await context.query.Product.findMany({
+      where,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      query: `
+        id
+        name
+        price
+        originalPrice
+        description
+        categoryType
+        isNewStock
+        isOnSale
+        primaryImage {
+          id
+          url
+        }
+        images {
+          id
+          image {
+            id
+            url
+          }
+        }
+      `
+    });
+    
+    console.log(`✅ Found ${products.length} products`);
+    
+    res.json({
+      success: true,
+      data: { products }
+    });
+  } catch (error) {
+    console.error('❌ Products fetch error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch products'
+    });
+  }
+});
+
+        // ✅ Upload product image endpoint - Using GraphQL multipart request
         app.post('/api/products/:productId/upload-image', upload.single('image'), async (req, res) => {
           console.log('========================================');
           console.log('🚀 BACKEND: Image upload request received');
@@ -176,6 +338,7 @@ export default withAuth(
             // Create a multipart form for GraphQL upload
             const form = new FormData();
             
+            // Add the GraphQL operations
             const operations = {
               query: `
                 mutation UpdateProductImage($id: ID!, $image: Upload!) {
@@ -197,18 +360,21 @@ export default withAuth(
             
             form.append('operations', JSON.stringify(operations));
             
+            // Add the map to tell GraphQL where the file is
             const map = {
               '0': ['variables.image']
             };
             form.append('map', JSON.stringify(map));
             
+            // Add the actual file
             form.append('0', fs.createReadStream(file.path), {
               filename: file.originalname,
               contentType: file.mimetype,
             });
 
+            // Send the multipart request to Keystone's GraphQL endpoint
             const headers = form.getHeaders();
-            headers['apollo-require-preflight'] = 'true';
+            headers['apollo-require-preflight'] = 'true'; // Add CSRF protection header
             
             const graphqlResponse = await fetch('http://localhost:4000/api/graphql', {
               method: 'POST',
@@ -249,6 +415,9 @@ export default withAuth(
             });
           } catch (error) {
             console.error('❌ Upload error:', error);
+            console.error('Error details:', {
+            
+            });
             console.log('========================================\n');
             
             // Clean up temp file on error
@@ -264,167 +433,10 @@ export default withAuth(
             res.status(500).json({
               success: false,
               error: 'Failed to upload image',
+             
             });
           }
         });
-
-        // ✅ Get featured products - ONLY using fields that exist in schema
-        app.get('/api/products/featured', async (req, res) => {
-          console.log('🔍 GET /api/products/featured - Request received');
-          
-          try {
-            const context = await commonContext.withRequest(req, res);
-            const limit = parseInt(req.query.limit as string) || 8;
-            
-            console.log(`Fetching ${limit} featured products...`);
-            
-            // Get all products and filter them
-            const products = await context.query.Product.findMany({
-              take: limit,
-              orderBy: { createdAt: 'desc' },
-              query: `
-                id
-                name
-                price
-                description
-                stock
-                image {
-                  id
-                  url
-                }
-                category {
-                  id
-                  name
-                }
-              `
-            });
-            
-            console.log(`✅ Found ${products.length} products`);
-            
-            res.json({
-              success: true,
-              data: { products }
-            });
-          } catch (error) {
-            console.error('❌ Featured products error:', error);
-            res.status(500).json({
-              success: false,
-              error: error.message || 'Failed to fetch featured products'
-            });
-          }
-        });
-
-        // ✅ Get new arrivals - ONLY using fields that exist in schema
-        app.get('/api/products/new-arrivals', async (req, res) => {
-          console.log('🆕 GET /api/products/new-arrivals - Request received');
-          
-          try {
-            const context = await commonContext.withRequest(req, res);
-            const limit = parseInt(req.query.limit as string) || 8;
-            
-            console.log(`Fetching ${limit} new arrivals...`);
-            
-            const products = await context.query.Product.findMany({
-              take: limit,
-              orderBy: { createdAt: 'desc' },
-              query: `
-                id
-                name
-                price
-                description
-                stock
-                image {
-                  id
-                  url
-                }
-                category {
-                  id
-                  name
-                }
-              `
-            });
-            
-            console.log(`✅ Found ${products.length} new arrivals`);
-            
-            res.json({
-              success: true,
-              data: { products }
-            });
-          } catch (error) {
-            console.error('❌ New arrivals error:', error);
-            res.status(500).json({
-              success: false,
-              error: error.message || 'Failed to fetch new arrivals'
-            });
-          }
-        });
-
-        // ✅ Get all products - ONLY using fields that exist in schema
-        app.get('/api/products', async (req, res) => {
-          console.log('📦 GET /api/products - Request received');
-          
-          try {
-            const context = await commonContext.withRequest(req, res);
-            const limit = parseInt(req.query.limit as string) || 20;
-            const categoryName = req.query.category as string;
-            
-            let where: any = {};
-            
-            // If category filter is provided, fetch category ID first
-            if (categoryName) {
-              const category = await context.query.Category.findOne({
-                where: { name: categoryName },
-                query: 'id'
-              });
-              
-              if (category) {
-                where.category = { id: { equals: category.id } };
-              }
-            }
-            
-            const products = await context.query.Product.findMany({
-              where,
-              take: limit,
-              orderBy: { createdAt: 'desc' },
-              query: `
-                id
-                name
-                price
-                description
-                stock
-                image {
-                  id
-                  url
-                }
-                category {
-                  id
-                  name
-                }
-              `
-            });
-            
-            console.log(`✅ Found ${products.length} products`);
-            
-            res.json({
-              success: true,
-              data: { products }
-            });
-          } catch (error) {
-            console.error('❌ Products fetch error:', error);
-            res.status(500).json({
-              success: false,
-              error: error.message || 'Failed to fetch products'
-            });
-          }
-        });
-        
-        console.log('✅ Custom Express routes registered successfully');
-      },
-    },
-    graphql: {
-      path: '/api/graphql',
-      apolloConfig: {
-        csrfPrevention: false,
       },
     },
   })
