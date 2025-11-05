@@ -519,17 +519,17 @@ export default withAuth(
         signed: { expiry: 3600 },
       },
     },
-    server: {
-      port: 4000,
-      cors: {
-        origin: [
-          'http://localhost:3000',
-          'https://charmesiri.vercel.app',
-          'https://charme-frontend.vercel.app',
-          'https://*.vercel.app',
-        ],
-        credentials: true,
-      },
+  server: {
+  port: Number(process.env.PORT) || 4000,
+  cors: {
+    origin: [
+      'http://localhost:3000',
+      'https://charmesiri.vercel.app',
+      'https://charme-frontend.vercel.app',
+      /\.vercel\.app$/,
+    ],
+    credentials: true,
+  },
 
       extendExpressApp: (app, commonContext) => {
         // ✅ CRITICAL: Set up middleware FIRST
