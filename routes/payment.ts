@@ -1,3 +1,4 @@
+
 // backend/routes/payment.ts
 import type { Express, Request, Response } from 'express';
 
@@ -195,4 +196,3 @@ export const paymentRoutes = (app: Express) => {
   console.log('   - POST /api/payment/stripe/create-intent');
   console.log('   - GET  /api/payment/stripe/confirm/:intentId');
 };
-
