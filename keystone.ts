@@ -301,11 +301,16 @@ app.get('/api/products', async (req, res) => {
       },
     },
     graphql: {
-      path: '/api/graphql',
-      playground: process.env.NODE_ENV !== 'production',
-      apolloConfig: {
-        csrfPrevention: false,
+      playground: true,
+      cors: {
+        origin: [
+          "https://charmesiri.vercel.app",
+          "http://localhost:3000",
+          "https://charme-backend.onrender.com",
+        ],
+        credentials: true,
       },
+      apolloConfig: { introspection: true },
     },
   })
 );
