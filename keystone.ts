@@ -182,7 +182,9 @@ app.get('/api/products/featured', async (req, res) => {
     console.error('❌ Featured products error:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to fetch featured products'
+      // error: error.message || 'Failed to fetch featured products'
+      error: Error || 'Failed to upload image',
+
     });
   }
 });
@@ -236,10 +238,14 @@ app.get('/api/products/new-arrivals', async (req, res) => {
     console.error('❌ New arrivals error:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to fetch new arrivals'
+      // error: error.message || 'Failed to fetch new arrivals'
+      error: Error || 'Failed to upload image',
+
     });
   }
 });
+
+
 
 // ✅ FIXED: Get all products
 app.get('/api/products', async (req, res) => {
@@ -292,14 +298,61 @@ app.get('/api/products', async (req, res) => {
     console.error('❌ Products fetch error:', error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to fetch products'
+      // error: error.message || 'Failed to fetch products'
+      error: Error || 'Failed to upload image',
+
     });
   }
 });
+
+// ✅ Upload product image
+app.post('/api/products/:id/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    const productId = req.params.id;
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No image file uploaded' });
+    }
+
+    const context = await commonContext.withRequest(req, res);
+
+    // Update product with uploaded image
+    const updated = await context.query.Product.updateOne({
+      where: { id: productId },
+      data: {
+        images: {
+          create: [
+            {
+              image: {
+                upload: req.file.path,
+              },
+            },
+          ],
+        },
+      },
+      query: 'id name images { id image { url } }',
+    });
+
+    res.json({
+      success: true,
+      message: 'Image uploaded successfully',
+      product: updated,
+    });
+  } catch (error) {
+    console.error('❌ Image upload error:', error);
+    res.status(500).json({
+      success: false,
+      error: Error || 'Failed to upload image',
+      // error: error.message || 'Failed to upload image',
+
+    });
+  }
+});
+
         
         console.log('✅ Custom Express routes registered successfully');
       },
     },
+    
     graphql: {
       playground: true,
       cors: {
