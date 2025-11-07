@@ -443,7 +443,7 @@ export default withAuth(
         accessKeyId: B2_ACCESS_KEY_ID,
         secretAccessKey: B2_SECRET_ACCESS_KEY,
         forcePathStyle: true,
-        signed: { expiry: 3600 },
+        signed: { expiry: 86400 },
       },
     },
     server: {
